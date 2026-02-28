@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ZBALO Pro">
+<meta name="theme-color" content="#2d1f12">
+<title>ZBALO Pro — Maraîchage Bio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   VARIABLES & RESET — Ne pas modifier
+   ═══════════════════════════════════════════════ */
+:root {
+  --soil: #2d1f12; --earth: #4a3120; --moss: #3d5a2e; --sage: #7a9e6a;
+  --fern: #b5c99a; --cream: #f5efe3; --parchment: #ede4d0;
+  --gold: #c9a84c; --rust: #a04520; --sky: #7ab5c8; --text: #1a130a;
+  --admin: #6b21a8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family:'DM Mono',monospace; background:var(--cream); color:var(--text); min-height:100vh;
+  background-image:radial-gradient(ellipse at 10% 10%,rgba(125,170,90,.08) 0%,transparent 50%),
+  radial-gradient(ellipse at 90% 80%,rgba(193,155,80,.06) 0%,transparent 40%);
+  padding-bottom:env(safe-area-inset-bottom);
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ═══ HEADER ═══ */
+header {
+  background:var(--soil); padding:14px 28px;
+  padding-top:max(14px,env(safe-area-inset-top));
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:100; box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+header h1 { font-family:'Playfair Display',serif; color:var(--fern); font-size:1.4rem; }
+header h1 span { color:var(--gold); font-style:italic; }
+.header-right { display:flex; align-items:center; gap:14px; }
+.header-date { color:var(--sage); font-size:.72rem; opacity:.8; }
+.btn-admin {
+  background:var(--admin); color:white; border:none; padding:7px 14px;
+  border-radius:20px; font-family:'DM Mono',monospace; font-size:.72rem; cursor:pointer;
+  display:flex; align-items:center; gap:6px; transition:opacity .2s;
+}
+.btn-admin:hover { opacity:.85; }
+.btn-admin.active { background:#16a34a; }
+
+/* ═══ BARS ═══ */
+.admin-bar { background:var(--admin); color:white; text-align:center; padding:6px; font-size:.75rem; display:none; }
+.admin-bar.show { display:block; }
+.drag-hint { display:none; background:#ede4d0; text-align:center; padding:5px; font-size:.72rem; color:#4a3120; border-bottom:1px solid rgba(0,0,0,.08); }
+#syncStatus {
+  background:#1e3a2f; color:#86efac; text-align:center;
+  padding:5px 16px; font-size:.72rem; font-family:'DM Mono',monospace;
+  transition:opacity .5s; display:none; align-items:center; justify-content:center; gap:8px;
+}
+
+/* ═══ TABS ═══ */
+.tabs {
+  display:flex; gap:3px; background:var(--parchment); padding:10px 28px 0;
+  border-bottom:2px solid rgba(0,0,0,.08); overflow-x:auto;
+  scrollbar-width:none; -webkit-overflow-scrolling:touch;
+}
+.tabs::-webkit-scrollbar { display:none; }
+.tab-btn {
+  padding:9px 16px; border:none; background:transparent;
+  font-family:'DM Mono',monospace; font-size:.78rem; color:var(--earth);
+  cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;
+  transition:all .2s; white-space:nowrap; display:flex; align-items:center; gap:6px;
+  flex-shrink:0;
+}
+.tab-btn:hover { color:var(--moss); }
+.tab-btn.active { color:var(--moss); border-bottom-color:var(--sage); background:rgba(122,158,106,.08); border-radius:6px 6px 0 0; }
+.tab-btn.drag-over { background:rgba(122,158,106,.25)!important; border-bottom-color:var(--gold)!important; transform:scale(1.05); }
+.tab-btn[draggable="true"] { user-select:none; }
+.badge-count { background:var(--rust); color:white; border-radius:10px; padding:1px 6px; font-size:.65rem; }
+
+/* ═══ CONTENT ═══ */
+.content { max-width:1150px; margin:0 auto; padding:24px 28px; }
+.section { display:none; }
+.section.active { display:block; animation:fadeIn .3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+/* ═══ STATS ═══ */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:28px; }
+.stat-card {
+  background:white; border:1px solid rgba(0,0,0,.07); border-radius:12px;
+  padding:18px; text-align:center; position:relative; overflow:hidden;
+}
+.stat-card::before { content:''; position:absolute; top:0;left:0;right:0; height:3px; background:var(--sage); }
+.stat-card.gold::before{background:var(--gold)} .stat-card.rust::before{background:var(--rust)}
+.stat-card.sky::before{background:var(--sky)} .stat-card.purple::before{background:var(--admin)}
+.stat-num { font-family:'Playfair Display',serif; font-size:2.2rem; color:var(--soil); line-height:1; }
+.stat-label { font-size:.7rem; color:#888; margin-top:5px; text-transform:uppercase; letter-spacing:.08em; }
+.stat-card.clickable { cursor:pointer; transition:transform .15s,box-shadow .15s; }
+.stat-card.clickable:hover { transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,.12); }
+.stat-card.clickable:active { transform:scale(.97); }
+.stat-arrow { position:absolute; bottom:10px; right:14px; font-size:.8rem; color:#ccc; transition:color .15s; }
+.stat-card.clickable:hover .stat-arrow { color:var(--sage); }
+
+/* ═══ SECTION HEADER ═══ */
+.section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px; }
+.section-title { font-family:'Playfair Display',serif; font-size:1.25rem; color:var(--soil); }
+.btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ═══ BUTTONS ═══ */
+.btn-add {
+  background:var(--moss); color:white; border:none; padding:9px 18px; border-radius:8px;
+  font-family:'DM Mono',monospace; font-size:.76rem; cursor:pointer; transition:background .2s;
+  display:flex; align-items:center; gap:7px;
+}
+.btn-add:hover { background:var(--soil); }
+.btn-add.secondary { background:var(--earth); }
+.btn-add.danger { background:var(--rust); }
+.btn-add.purple { background:var(--admin); }
+.btn-add.blue { background:#1e40af; }
+.btn-icon {
+  background:none; border:1px solid rgba(0,0,0,.1); border-radius:5px;
+  padding:3px 7px; cursor:pointer; font-size:.78rem; transition:all .15s; margin-right:3px;
+}
+.btn-icon:hover { background:var(--parchment); }
+.btn-icon.del:hover { background:#ffebee; border-color:#ef9a9a; }
+button:active { opacity:.75; transform:scale(.97); }
+
+/* ═══ TABLE ═══ */
+.table-wrapper { background:white; border-radius:12px; border:1px solid rgba(0,0,0,.07); overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.05); }
+table { width:100%; border-collapse:collapse; }
+thead { background:var(--soil); color:var(--fern); }
+th { padding:11px 14px; text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; font-weight:400; white-space:nowrap; }
+td { padding:11px 14px; border-bottom:1px solid rgba(0,0,0,.05); font-size:.8rem; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(122,158,106,.04); }
+
+/* ═══ BADGES ═══ */
+.badge { display:inline-block; padding:2px 9px; border-radius:20px; font-size:.68rem; font-weight:500; text-transform:uppercase; letter-spacing:.06em; }
+.badge-semis{background:#e8f5e9;color:#2e7d32} .badge-plantation{background:#e3f2fd;color:#1565c0}
+.badge-entretien{background:#fff8e1;color:#e65100} .badge-recolte{background:#fce4ec;color:#c62828}
+.badge-ok{background:#e8f5e9;color:#2e7d32} .badge-low{background:#fff8e1;color:#f57f17}
+.badge-out{background:#ffebee;color:#c62828} .badge-vente{background:#f3e5f5;color:#6a1b9a}
+.badge-mini{background:#e0f2fe;color:#0369a1} .badge-fruit{background:#fef9c3;color:#854d0e}
+.badge-feuille{background:#dcfce7;color:#166534} .badge-racine{background:#ffedd5;color:#9a3412}
+
+/* ═══ RAPPELS ═══ */
+.rappels-list { display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
+.rappel-item {
+  background:white; border-radius:10px; padding:12px 16px;
+  display:flex; align-items:center; gap:12px; box-shadow:0 1px 6px rgba(0,0,0,.06);
+  border-left:4px solid var(--sage);
+}
+.rappel-item.urgent { border-left-color:var(--rust); background:#fff5f5; }
+.rappel-item.soon { border-left-color:var(--gold); }
+.rappel-icon { font-size:1.4rem; min-width:32px; text-align:center; }
+.rappel-info { flex:1; }
+.rappel-info strong { font-size:.85rem; display:block; }
+.rappel-info span { font-size:.73rem; color:#777; }
+.rappel-days { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--soil); min-width:50px; text-align:right; }
+.rappel-days small { font-family:'DM Mono',monospace; font-size:.65rem; color:#888; display:block; }
+.btn-done { background:none; border:1px solid #ccc; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:.72rem; transition:all .15s; }
+.btn-done:hover { background:#e8f5e9; border-color:var(--sage); }
+
+/* ═══ FICHES ═══ */
+.fiches-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+.fiche-card {
+  background:white; border-radius:12px; border:1px solid rgba(0,0,0,.08);
+  padding:18px; box-shadow:0 2px 8px rgba(0,0,0,.05); position:relative; transition:transform .15s;
+}
+.fiche-card:hover { transform:translateY(-2px); box-shadow:0 4px 16px rgba(0,0,0,.1); }
+.fiche-cat { position:absolute; top:14px; right:14px; }
+.fiche-name { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:4px; }
+.fiche-varietes { font-size:.72rem; color:#888; margin-bottom:12px; }
+.fiche-data { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.fiche-kv { background:var(--parchment); border-radius:6px; padding:6px 10px; }
+.fiche-kv .k { font-size:.64rem; text-transform:uppercase; letter-spacing:.07em; color:#888; }
+.fiche-kv .v { font-size:.85rem; font-weight:500; color:var(--soil); margin-top:1px; }
+.fiche-kv.full { grid-column:1/-1; }
+.fiche-temp { display:flex; gap:4px; margin-top:8px; }
+.temp-chip { background:linear-gradient(135deg,#e0f2fe,#bae6fd); border-radius:6px; padding:5px 10px; text-align:center; flex:1; }
+.temp-chip .k { font-size:.6rem; color:#0369a1; text-transform:uppercase; }
+.temp-chip .v { font-size:.9rem; font-weight:500; color:#0c4a6e; }
+.fiche-actions { display:flex; gap:6px; margin-top:12px; }
+.btn-fiche { flex:1; padding:7px; border:1px solid rgba(0,0,0,.1); border-radius:7px; background:none; cursor:pointer; font-family:'DM Mono',monospace; font-size:.72rem; transition:all .15s; }
+.btn-fiche:hover { background:var(--parchment); }
+.btn-fiche.primary { background:var(--moss); color:white; border-color:var(--moss); }
+.btn-fiche.primary:hover { background:var(--soil); }
+
+/* ═══ STOCKS ═══ */
+.stock-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; }
+.stock-card { background:white; border-radius:12px; padding:16px; border:1px solid rgba(0,0,0,.07); box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.stock-card h4 { font-family:'Playfair Display',serif; font-size:.95rem; margin-bottom:4px; }
+.stock-qty { font-size:1.7rem; font-family:'Playfair Display',serif; color:var(--moss); line-height:1; }
+.stock-unit { font-size:.7rem; color:#888; }
+.stock-bar { height:5px; background:var(--parchment); border-radius:3px; margin:8px 0; overflow:hidden; }
+.stock-bar-fill { height:100%; border-radius:3px; background:var(--sage); transition:width .5s; }
+.stock-bar-fill.low{background:var(--gold)} .stock-bar-fill.out{background:var(--rust)}
+
+/* ═══ VENTES ═══ */
+.vente-summary {
+  background:var(--soil); color:var(--cream); border-radius:12px;
+  padding:22px; display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-bottom:22px;
+}
+.vente-summary h3 { grid-column:1/-1; font-family:'Playfair Display',serif; color:var(--fern); }
+.vente-kpi { text-align:center; }
+.vente-kpi .num { font-family:'Playfair Display',serif; font-size:1.8rem; color:var(--gold); }
+.vente-kpi .lbl { font-size:.68rem; opacity:.6; text-transform:uppercase; letter-spacing:.07em; }
+
+/* ═══ ADMIN ═══ */
+.admin-sections { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.admin-card { background:white; border-radius:12px; padding:18px; border:1px solid rgba(107,33,168,.15); }
+.admin-card h3 { font-family:'Playfair Display',serif; font-size:1rem; color:var(--admin); margin-bottom:14px; }
+.admin-list { display:flex; flex-direction:column; gap:8px; max-height:250px; overflow-y:auto; }
+.admin-list-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--parchment); border-radius:8px; font-size:.78rem; }
+.admin-list-item .actions { display:flex; gap:4px; }
+
+/* ═══ MODAL ═══ */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; backdrop-filter:blur(3px); align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--cream); border-radius:16px; padding:28px; width:580px;
+  max-width:96vw; max-height:92vh; overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.35); animation:slideUp .25s ease;
+}
+.modal.admin-modal { border:2px solid var(--admin); }
+@keyframes slideUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+.modal h2 { font-family:'Playfair Display',serif; color:var(--soil); margin-bottom:22px; font-size:1.15rem; }
+.modal h2.admin-title { color:var(--admin); }
+.modal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.modal-nav h2 { font-size:1.1rem; margin-bottom:0; }
+.btn-full-page { background:var(--moss); color:white; border:none; padding:7px 14px; border-radius:7px; font-family:'DM Mono',monospace; font-size:.73rem; cursor:pointer; }
+
+/* ═══ FORMS ═══ */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-group { display:flex; flex-direction:column; gap:5px; }
+.form-group.full { grid-column:1/-1; }
+label { font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; color:#666; }
+input,select,textarea {
+  padding:9px 11px; border:1px solid rgba(0,0,0,.12); border-radius:8px;
+  font-family:'DM Mono',monospace; font-size:.8rem; background:white; color:var(--text);
+  transition:border-color .2s;
+}
+input:focus,select:focus,textarea:focus { outline:none; border-color:var(--sage); box-shadow:0 0 0 3px rgba(122,158,106,.15); }
+textarea { resize:vertical; min-height:70px; }
+.form-sep { grid-column:1/-1; border:none; border-top:1px dashed rgba(0,0,0,.12); margin:4px 0; }
+.form-section-label { grid-column:1/-1; font-size:.72rem; font-weight:500; color:var(--moss); text-transform:uppercase; letter-spacing:.08em; margin-top:4px; }
+.form-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+.btn-cancel { padding:9px 18px; border:1px solid rgba(0,0,0,.15); border-radius:8px; background:white; font-family:'DM Mono',monospace; font-size:.76rem; cursor:pointer; }
+.btn-save { padding:9px 22px; background:var(--moss); color:white; border:none; border-radius:8px; font-family:'DM Mono',monospace; font-size:.76rem; cursor:pointer; }
+.btn-save:hover { background:var(--soil); }
+.btn-save.admin { background:var(--admin); }
+.btn-save.danger { background:var(--rust); }
+
+/* ═══ SEARCH ═══ */
+.search-bar { display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.search-bar input { flex:1; min-width:150px; }
+.filter-select { padding:8px 12px; border:1px solid rgba(0,0,0,.12); border-radius:8px; font-family:'DM Mono',monospace; font-size:.78rem; }
+
+/* ═══ DETAIL MODAL ═══ */
+.detail-table { width:100%; border-collapse:collapse; margin-top:14px; }
+.detail-table th { background:var(--soil); color:var(--fern); padding:9px 12px; text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.07em; font-weight:400; }
+.detail-table td { padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.06); font-size:.78rem; }
+.detail-table tr:last-child td { border-bottom:none; }
+.detail-table tr:hover td { background:rgba(122,158,106,.05); }
+.detail-summary { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+.detail-kpi { background:var(--parchment); border-radius:8px; padding:10px 16px; text-align:center; flex:1; min-width:100px; }
+.detail-kpi .num { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--soil); }
+.detail-kpi .lbl { font-size:.65rem; text-transform:uppercase; letter-spacing:.07em; color:#888; margin-top:2px; }
+
+/* ═══ HISTORIQUE ═══ */
+.histo-charts { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.chart-box { background:white; border-radius:12px; border:1px solid rgba(0,0,0,.07); padding:20px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
+.chart-box h4 { font-family:'Playfair Display',serif; font-size:1rem; color:var(--soil); margin-bottom:14px; }
+
+/* ═══ ASSISTANT IA ═══ */
+.ai-wrap { display:flex; flex-direction:column; height:calc(100vh - 220px); max-height:700px; }
+.ai-header { background:var(--soil); border-radius:12px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+.ai-messages { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:4px 2px; margin-bottom:16px; }
+.ai-msg { display:flex; gap:10px; align-items:flex-start; }
+.ai-msg-user { flex-direction:row-reverse; }
+.ai-avatar { width:32px; height:32px; border-radius:50%; background:var(--soil); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.ai-msg-user .ai-avatar { background:var(--moss); }
+.ai-bubble { background:white; border-radius:12px; padding:12px 16px; font-size:.82rem; line-height:1.6; max-width:82%; box-shadow:0 2px 8px rgba(0,0,0,.06); border:1px solid rgba(0,0,0,.06); }
+.ai-msg-user .ai-bubble { background:var(--moss); color:white; border-color:var(--moss); }
+.ai-bubble em { color:var(--moss); font-style:normal; }
+.ai-msg-user .ai-bubble em { color:#d1fae5; }
+.ai-input-row { display:flex; gap:10px; align-items:flex-end; }
+.ai-input-row textarea { flex:1; resize:none; min-height:50px; max-height:120px; padding:12px; border:2px solid rgba(0,0,0,.1); border-radius:10px; font-size:.82rem; }
+.ai-send { background:var(--moss); color:white; border:none; padding:12px 18px; border-radius:10px; cursor:pointer; font-size:1.2rem; height:50px; min-width:50px; }
+.ai-suggestions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.ai-chip { background:var(--parchment); border:1px solid rgba(0,0,0,.1); border-radius:20px; padding:6px 14px; font-family:'DM Mono',monospace; font-size:.72rem; cursor:pointer; transition:all .15s; }
+.ai-chip:hover { background:var(--moss); color:white; border-color:var(--moss); }
+.ai-typing { display:flex; gap:4px; padding:8px; }
+.ai-typing span { width:8px; height:8px; border-radius:50%; background:var(--sage); animation:typing .8s infinite alternate; }
+.ai-typing span:nth-child(2){animation-delay:.2s} .ai-typing span:nth-child(3){animation-delay:.4s}
+@keyframes typing { from{opacity:.3;transform:translateY(0)} to{opacity:1;transform:translateY(-4px)} }
+.ai-status { margin-left:auto; font-size:.7rem; background:rgba(122,158,106,.2); color:var(--fern); padding:4px 10px; border-radius:20px; }
+
+/* ═══ EMPTY ═══ */
+.empty-state { text-align:center; padding:50px 20px; color:#aaa; }
+.empty-state .icon { font-size:2.5rem; margin-bottom:10px; }
+.empty-state p { font-size:.82rem; }
+
+/* ═══ INSTALL BANNER ═══ */
+#installBanner {
+  display:none; position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  background:#2d1f12; color:#f5efe3; border-radius:14px; padding:14px 20px; z-index:9999;
+  align-items:center; gap:14px; box-shadow:0 8px 30px rgba(0,0,0,.4); max-width:92vw; width:360px;
+}
+.install-btn { background:#7a9e6a; color:white; border:none; padding:8px 16px; border-radius:8px; font-family:'DM Mono',monospace; font-size:.76rem; cursor:pointer; white-space:nowrap; }
+.install-close { background:none; border:none; color:#b5c99a; cursor:pointer; font-size:1.2rem; padding:4px; }
+
+/* ═══ MOBILE ═══ */
+@media(max-width:640px){
+  header { padding:12px 16px; }
+  header h1 { font-size:1.1rem; }
+  .header-date { display:none; }
+  .tabs { padding:6px 10px 0; gap:2px; }
+  .tab-btn { padding:8px 10px; font-size:.7rem; }
+  .content { padding:14px 12px; }
+  .stat-num { font-size:1.8rem; }
+  table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .modal { padding:20px 16px; border-radius:20px 20px 0 0; position:fixed; bottom:0; left:0; right:0; width:100%; max-width:100%; max-height:90vh; margin:0; }
+  .modal-overlay { align-items:flex-end; }
+  .form-grid { grid-template-columns:1fr; }
+  .fiche-data { grid-template-columns:1fr; }
+  .admin-sections { grid-template-columns:1fr; }
+  .histo-charts { grid-template-columns:1fr; }
+  .vente-summary { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<!-- INSTALL BANNER -->
+<div id="installBanner">
+  <span style="font-size:1.6rem">🌿</span>
+  <div style="flex:1">
+    <div style="font-family:Playfair Display,serif;font-size:.95rem;color:#b5c99a">Installer ZBALO Pro</div>
+    <div style="font-size:.72rem;opacity:.7;margin-top:2px">Accès rapide depuis votre écran d'accueil</div>
+  </div>
+  <button class="install-btn" onclick="installPWA()">Installer</button>
+  <button class="install-close" onclick="dismissInstall()">✕</button>
+</div>
+
+<header>
+  <h1>ZBA<span>LO</span> <span style="font-size:.85rem;color:var(--sage);font-style:normal;">Pro</span></h1>
+  <div class="header-right">
+    <div class="header-date" id="headerDate"></div>
+    <button class="btn-admin" id="adminBtn" onclick="toggleAdmin()">🔧 Admin</button>
+  </div>
+</header>
+
+<div class="admin-bar" id="adminBar">⚙️ MODE ADMINISTRATION ACTIF</div>
+<div id="syncStatus"><span id="syncStatusText">🔄</span></div>
+<div class="drag-hint" id="dragHint">⠿ Glissez les onglets pour les réorganiser</div>
+<div class="tabs" id="tabsContainer"></div>
+
+<div class="content">
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="section active">
+    <div class="stats-grid">
+      <div class="stat-card clickable" onclick="showDetailModal('cultures')">
+        <div class="stat-num" id="statCultures">0</div><div class="stat-label">Cultures actives</div><div class="stat-arrow">→</div></div>
+      <div class="stat-card gold clickable" onclick="showTabById('rappels')">
+        <div class="stat-num" id="statRappels">0</div><div class="stat-label">Rappels en attente</div><div class="stat-arrow">→</div></div>
+      <div class="stat-card sky clickable" onclick="showTabById('fiches')">
+        <div class="stat-num" id="statFiches">0</div><div class="stat-label">Fiches légumes</div><div class="stat-arrow">→</div></div>
+      <div class="stat-card rust clickable" onclick="showDetailModal('ventes')">
+        <div class="stat-num" id="statCA">0€</div><div class="stat-label">CA ce mois</div><div class="stat-arrow">→</div></div>
+      <div class="stat-card purple clickable" onclick="showTabById('stock')">
+        <div class="stat-num" id="statStockAlert">0</div><div class="stat-label">Alertes stock</div><div class="stat-arrow">→</div></div>
+    </div>
+    <div class="section-header"><div class="section-title">🔔 Rappels à venir</div></div>
+    <div class="rappels-list" id="dashRappels"></div>
+  </div>
+
+  <!-- FICHES LÉGUMES -->
+  <div id="fiches" class="section">
+    <div class="search-bar">
+      <input type="text" placeholder="Rechercher un légume..." id="searchFiche" oninput="filterFiches()">
+      <select class="filter-select" id="filterCat" onchange="filterFiches()"><option value="">Toutes catégories</option></select>
+    </div>
+    <div class="section-header">
+      <div class="section-title">📋 Fiches techniques — Maraîchage Bio</div>
+      <button class="btn-add" onclick="openModal('fiche')">＋ Nouvelle fiche</button>
+    </div>
+    <div class="fiches-grid" id="fichesGrid"></div>
+  </div>
+
+  <!-- CULTURES -->
+  <div id="culture" class="section">
+    <div class="search-bar">
+      <input type="text" placeholder="Rechercher..." id="searchCulture" oninput="filterCultures()">
+      <select class="filter-select" id="filterSerre" onchange="filterCultures()"><option value="">Toutes serres</option></select>
+      <select class="filter-select" id="filterTypeCulture" onchange="filterCultures()">
+        <option value="">Tous types</option>
+        <option value="semis">Semis</option><option value="plantation">Plantation</option><option value="recolte">Récolte</option>
+      </select>
+    </div>
+    <div class="section-header">
+      <div class="section-title">🌱 Semis & Plantations</div>
+      <button class="btn-add" onclick="openModal('culture')">＋ Ajouter</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr>
+          <th>Légume · Variété</th><th>Type</th><th>Serre</th><th>Date</th>
+          <th>Récolte prévue</th><th>Statut</th><th>Surface m²</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="cultureTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RAPPELS -->
+  <div id="rappels" class="section">
+    <div class="section-header">
+      <div class="section-title">🔔 Tous les rappels</div>
+      <button class="btn-add secondary" onclick="openModal('rappel')">＋ Rappel manuel</button>
+    </div>
+    <div class="rappels-list" id="allRappels"></div>
+  </div>
+
+  <!-- ENTRETIENS -->
+  <div id="entretien" class="section">
+    <div class="section-header">
+      <div class="section-title">🔧 Journal d'entretien</div>
+      <button class="btn-add" onclick="openModal('entretien')">＋ Ajouter</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Date</th><th>Type</th><th>Zone</th><th>Description</th><th>Durée (h)</th><th>Actions</th></tr></thead>
+        <tbody id="entretienTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STOCKS -->
+  <div id="stock" class="section">
+    <div class="section-header">
+      <div class="section-title">📦 Gestion des stocks</div>
+      <button class="btn-add" onclick="openModal('stock')">＋ Ajouter</button>
+    </div>
+    <div class="stock-grid" id="stockGrid"></div>
+  </div>
+
+  <!-- VENTES -->
+  <div id="ventes" class="section">
+    <div class="vente-summary">
+      <h3>Résumé des ventes</h3>
+      <div class="vente-kpi"><div class="num" id="venteTotalCA">0 €</div><div class="lbl">CA total</div></div>
+      <div class="vente-kpi"><div class="num" id="venteNb">0</div><div class="lbl">Transactions</div></div>
+      <div class="vente-kpi"><div class="num" id="venteMoy">0 €</div><div class="lbl">Panier moyen</div></div>
+    </div>
+    <div class="section-header">
+      <div class="section-title">Historique des ventes</div>
+      <button class="btn-add" onclick="openModal('vente')">＋ Vente</button>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Date</th><th>Produit</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Client</th><th>Actions</th></tr></thead>
+        <tbody id="venteTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HISTORIQUE -->
+  <div id="historique" class="section">
+    <div class="section-header">
+      <div class="section-title">📊 Historique & Statistiques</div>
+      <div class="btn-group">
+        <select class="filter-select" id="histoAnnee" onchange="renderHistorique()"></select>
+        <select class="filter-select" id="histoMois" onchange="renderHistorique()">
+          <option value="">Toute l'année</option>
+          <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option>
+          <option value="3">Avril</option><option value="4">Mai</option><option value="5">Juin</option>
+          <option value="6">Juillet</option><option value="7">Août</option><option value="8">Septembre</option>
+          <option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+        </select>
+      </div>
+    </div>
+    <div class="stats-grid" id="histoKpis" style="margin-bottom:24px"></div>
+    <div class="histo-charts">
+      <div class="chart-box"><h4>💰 CA mensuel</h4><canvas id="chartCA" height="180"></canvas></div>
+      <div class="chart-box"><h4>🌱 Cultures par statut</h4><canvas id="chartCultures" height="180"></canvas></div>
+      <div class="chart-box"><h4>🔧 Entretiens par type</h4><canvas id="chartEntretiens" height="180"></canvas></div>
+      <div class="chart-box"><h4>🌾 Top produits vendus</h4><canvas id="chartProduits" height="180"></canvas></div>
+    </div>
+    <div class="section-header"><div class="section-title">🌱 Cultures par saison</div></div>
+    <div class="table-wrapper" style="margin-bottom:20px">
+      <table>
+        <thead><tr><th>Légume</th><th>Variété</th><th>Serre</th><th>Date semis</th><th>Récolte</th><th>Surface</th><th>Statut</th></tr></thead>
+        <tbody id="histoCulturesTable"></tbody>
+      </table>
+    </div>
+    <div class="section-header"><div class="section-title">🔧 Entretiens effectués</div></div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr><th>Date</th><th>Type</th><th>Zone</th><th>Durée (h)</th><th>Description</th></tr></thead>
+        <tbody id="histoEntretiensTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ASSISTANT IA -->
+  <div id="assistant" class="section">
+    <div class="ai-wrap">
+      <div class="ai-header">
+        <span style="font-size:1.8rem">🤖</span>
+        <div>
+          <div style="font-family:Playfair Display,serif;color:var(--fern);font-size:1.1rem">Assistant ZBALO</div>
+          <div style="font-size:.72rem;color:var(--sage);opacity:.8">Maraîchage bio · Bretagne/Pays de Loire · Temps réel</div>
+        </div>
+        <div class="ai-status" id="aiStatus">🟢 Connecté</div>
+      </div>
+      <div class="ai-messages" id="aiMessages">
+        <div class="ai-msg">
+          <div class="ai-avatar">🌿</div>
+          <div class="ai-bubble">Salut ! Je suis ton assistant maraîchage bio. Je connais tes cultures, tes serres et tes stocks en temps réel.<br><br>
+            Tu peux me demander des conseils ou me donner des instructions directes :<br>
+            • <em>"Crée une culture de tomates en Serre 2"</em><br>
+            • <em>"Ajoute une serre 6"</em><br>
+            • <em>"Quelles plantes associer avec mes aubergines ?"</em><br>
+            • <em>"Quelle météo cette semaine ?"</em>
+          </div>
+        </div>
+      </div>
+      <div class="ai-input-row">
+        <textarea id="aiInput" placeholder="Pose une question ou donne une instruction..."
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"></textarea>
+        <button class="ai-send" onclick="sendAI()">➤</button>
+      </div>
+      <div class="ai-suggestions">
+        <button class="ai-chip" onclick="askAI('Quelles associations de plantes pour mes cultures actuelles ?')">🌿 Associations</button>
+        <button class="ai-chip" onclick="askAI('Météo cette semaine en Bretagne et conseils ?')">🌤️ Météo</button>
+        <button class="ai-chip" onclick="askAI('Quels entretiens faire cette semaine ?')">🔧 Entretiens</button>
+        <button class="ai-chip" onclick="askAI('Fais-moi un bilan complet de mes cultures')">📊 Bilan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPTABILITÉ -->
+  <div id="compta" class="section">
+    <div class="section-header">
+      <div class="section-title">📒 Comptabilité & Dépenses</div>
+      <div class="btn-group">
+        <button class="btn-add" onclick="openScanTicket()">📸 Scanner un ticket</button>
+        <button class="btn-add secondary" onclick="openModal('depense')">＋ Saisie manuelle</button>
+      </div>
+    </div>
+    <div class="stats-grid" id="comptaKpis" style="margin-bottom:24px"></div>
+    <div id="scanZone" style="display:none;background:white;border-radius:14px;border:2px dashed var(--sage);padding:24px;margin-bottom:24px;text-align:center">
+      <div style="font-size:2.5rem;margin-bottom:8px">📸</div>
+      <div style="font-family:Playfair Display,serif;font-size:1.05rem;color:var(--soil);margin-bottom:6px">Scanner un ticket de caisse</div>
+      <div style="font-size:.78rem;color:#888;margin-bottom:18px">L'IA lit le ticket et extrait date, fournisseur, montant, articles</div>
+      <input type="file" id="ticketInput" accept="image/*" capture="environment" style="display:none" onchange="analyseTicket(event)">
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-add" onclick="document.getElementById('ticketInput').setAttribute('capture','environment');document.getElementById('ticketInput').click()">📷 Photo</button>
+        <button class="btn-add secondary" onclick="document.getElementById('ticketInput').removeAttribute('capture');document.getElementById('ticketInput').click()">🖼️ Galerie</button>
+        <button class="btn-add" style="background:#888" onclick="closeScanTicket()">Annuler</button>
+      </div>
+      <div id="ticketPreview" style="margin-top:16px;display:none">
+        <img id="ticketImg" style="max-width:180px;max-height:180px;border-radius:8px;margin-bottom:10px;border:2px solid var(--parchment)">
+        <div id="ticketAnalyse" style="background:var(--parchment);border-radius:10px;padding:14px;text-align:left"></div>
+      </div>
+    </div>
+    <div class="search-bar" style="margin-bottom:16px">
+      <select class="filter-select" id="comptaFiltreAnnee" onchange="renderCompta()"></select>
+      <select class="filter-select" id="comptaFiltreMois" onchange="renderCompta()">
+        <option value="">Tous les mois</option>
+        <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option>
+        <option value="3">Avril</option><option value="4">Mai</option><option value="5">Juin</option>
+        <option value="6">Juillet</option><option value="7">Août</option><option value="8">Septembre</option>
+        <option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
+      </select>
+      <select class="filter-select" id="comptaFiltreCat" onchange="renderCompta()">
+        <option value="">Toutes catégories</option>
+        <option value="Graines &amp; semences">🌱 Graines &amp; semences</option>
+        <option value="Terreau &amp; substrat">🪴 Terreau &amp; substrat</option>
+        <option value="Matériel &amp; outillage">🔧 Matériel &amp; outillage</option>
+        <option value="Engrais &amp; traitement">🌿 Engrais &amp; traitement</option>
+        <option value="Élevage &amp; animaux">🐔 Élevage &amp; animaux</option>
+        <option value="Énergie &amp; eau">💧 Énergie &amp; eau</option>
+        <option value="Autre">📦 Autre</option>
+      </select>
+    </div>
+    <div class="table-wrapper">
+      <table><thead><tr><th>Date</th><th>Fournisseur</th><th>Catégorie</th><th>Articles</th><th>Total</th><th>Actions</th></tr></thead>
+      <tbody id="comptaTable"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="admin" class="section">
+    <div class="section-header">
+      <div class="section-title" style="color:var(--admin)">⚙️ Administration</div>
+    </div>
+    <div class="admin-sections">
+      <div class="admin-card">
+        <h3>🏚️ Serres</h3>
+        <div class="admin-list" id="adminSerresList"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="newSerreName" placeholder="Nom de la serre..." style="flex:1;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-family:DM Mono,monospace;font-size:.78rem">
+          <button class="btn-add" onclick="addSerre()" style="padding:7px 14px">＋</button>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>🌿 Base légumes</h3>
+        <div class="admin-list" id="adminLegumesList"></div>
+        <button class="btn-add" style="margin-top:10px;width:100%;justify-content:center" onclick="openModal('fiche')">＋ Nouveau légume</button>
+      </div>
+      <div class="admin-card">
+        <h3>🔧 Types d'entretien</h3>
+        <div class="admin-list" id="adminEntretienList"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="newEntretienType" placeholder="ex: Élevages, Récolte miel..." style="flex:1;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-family:DM Mono,monospace;font-size:.78rem">
+          <button class="btn-add" onclick="addOption('types_entretien','newEntretienType')" style="padding:7px 14px">＋</button>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>🌱 Statuts cultures</h3>
+        <div class="admin-list" id="adminStatutList"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="newStatut" placeholder="ex: Hivernal, En pause..." style="flex:1;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-family:DM Mono,monospace;font-size:.78rem">
+          <button class="btn-add" onclick="addOption('statuts_culture','newStatut')" style="padding:7px 14px">＋</button>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>📋 Catégories légumes</h3>
+        <div class="admin-list" id="adminCatList"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="newCat" placeholder="ex: Élevage, Champignon..." style="flex:1;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-family:DM Mono,monospace;font-size:.78rem">
+          <button class="btn-add" onclick="addOption('categories_legume','newCat')" style="padding:7px 14px">＋</button>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>📦 Unités de vente</h3>
+        <div class="admin-list" id="adminUniteList"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input id="newUnite" placeholder="ex: caisse, litre, douzaine..." style="flex:1;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-family:DM Mono,monospace;font-size:.78rem">
+          <button class="btn-add" onclick="addOption('unites_vente','newUnite')" style="padding:7px 14px">＋</button>
+        </div>
+      </div>
+      <div class="admin-card">
+        <h3>⚠️ Zone danger</h3>
+        <button class="btn-add blue" style="width:100%;justify-content:center;margin-top:8px"
+          onclick="if(confirm('Réinitialiser l'ordre des onglets ?')){tabOrder=DEFAULT_TABS.map(t=>t.id);localStorage.removeItem('zbalo_tab_order');renderTabs();}">
+          ↺ Ordre onglets défaut
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- MODAL -->
+<div id="modalOverlay" class="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal-content" id="modalContent"></div>
+</div>
+
+<!-- SYNC STATUS -->
+<div id="syncStatus" class="sync-status" style="display:none">
+  <span id="syncStatusText"></span>
+</div>
+
+<script src="/static/zbalo.js"></script>
+</body>
+</html>
